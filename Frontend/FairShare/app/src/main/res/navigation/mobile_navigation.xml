@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/mobile_navigation"
+    app:startDestination="@+id/nav_expenses">
+
+    <fragment
+        android:id="@+id/nav_expenses"
+        android:name="com.priyanshparekh.fairshare.group.expenses.ExpensesFragment"
+        tools:layout="@layout/fragment_expenses" />
+
+    <fragment
+        android:id="@+id/nav_balances"
+        android:name="com.priyanshparekh.fairshare.group.balances.BalancesFragment"
+        tools:layout="@layout/fragment_balances" >
+        <action
+            android:id="@+id/action_nav_balances_to_nav_payment"
+            app:destination="@id/nav_payment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/nav_dashboard"
+        android:name="com.priyanshparekh.fairshare.group.dashboard.DashboardFragment"
+        tools:layout="@layout/fragment_dashboard" />
+
+    <fragment
+        android:id="@+id/nav_activity_log"
+        android:name="com.priyanshparekh.fairshare.group.activitylog.ActivityLogFragment"
+        tools:layout="@layout/fragment_activity_log" />
+
+    <fragment
+        android:id="@+id/nav_manage_group"
+        android:name="com.priyanshparekh.fairshare.group.managegroup.ManageGroupFragment"
+        tools:layout="@layout/fragment_manage_group" >
+        <action
+            android:id="@+id/action_nav_manage_group_to_nav_add_members"
+            app:destination="@id/nav_add_members"
+            app:enterAnim="@android:anim/fade_in"
+            app:exitAnim="@android:anim/fade_out"
+            app:popEnterAnim="@android:anim/fade_in"
+            app:popExitAnim="@android:anim/fade_out" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/nav_add_members"
+        android:name="com.priyanshparekh.fairshare.group.managegroup.AddMembersFragment"
+        tools:layout="@layout/layout_add_member_dialog" />
+
+    <fragment
+        android:id="@+id/nav_payment"
+        android:name="com.priyanshparekh.fairshare.group.balances.PaymentFragment"
+        tools:layout="@layout/fragment_payment" />
+</navigation>

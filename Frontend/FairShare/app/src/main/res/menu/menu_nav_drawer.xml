@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:showIn="navigation_view">
+
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_expenses"
+            android:title="Expenses" />
+        <item
+            android:id="@+id/nav_balances"
+            android:title="Balances" />
+        <item
+            android:id="@+id/nav_dashboard"
+            android:title="Dashboard" />
+        <item
+            android:id="@+id/nav_activity_log"
+            android:title="Activity Log" />
+        <item
+            android:id="@+id/nav_manage_group"
+            android:title="Manage Group" />
+    </group>
+</menu>

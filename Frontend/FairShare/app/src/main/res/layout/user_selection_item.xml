@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.checkbox.MaterialCheckBox
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/checkboxUser"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="@dimen/_10sdp"
+    android:text="Username"
+    style="@style/Widget.Material3.CompoundButton.CheckBox"
+    android:textSize="@dimen/_14sdp"/>
