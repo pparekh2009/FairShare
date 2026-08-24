@@ -37,3 +37,6 @@ build/
 
 ### Firebase Key ###
 fairshare-firebase-key.json
+
+### Local dev environment reference (contains credentials) ###
+LOCAL_ENV.md
