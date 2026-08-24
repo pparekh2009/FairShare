@@ -1,177 +1,172 @@
 package com.priyanshparekh.fairshare.auth
 
 import android.content.Context
+import android.content.Context.MODE_PRIVATE
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.amazonaws.ClientConfiguration
-import com.amazonaws.mobileconnectors.cognitoidentityprovider.CognitoDevice
-import com.amazonaws.mobileconnectors.cognitoidentityprovider.CognitoUser
-import com.amazonaws.mobileconnectors.cognitoidentityprovider.CognitoUserAttributes
-import com.amazonaws.mobileconnectors.cognitoidentityprovider.CognitoUserPool
-import com.amazonaws.mobileconnectors.cognitoidentityprovider.CognitoUserSession
-import com.amazonaws.mobileconnectors.cognitoidentityprovider.continuations.AuthenticationContinuation
-import com.amazonaws.mobileconnectors.cognitoidentityprovider.continuations.AuthenticationDetails
-import com.amazonaws.mobileconnectors.cognitoidentityprovider.continuations.ChallengeContinuation
-import com.amazonaws.mobileconnectors.cognitoidentityprovider.continuations.MultiFactorAuthenticationContinuation
-import com.amazonaws.mobileconnectors.cognitoidentityprovider.handlers.AuthenticationHandler
-import com.amazonaws.mobileconnectors.cognitoidentityprovider.handlers.SignUpHandler
-import com.amazonaws.regions.Regions
-import com.amazonaws.services.cognitoidentityprovider.model.InvalidParameterException
-import com.amazonaws.services.cognitoidentityprovider.model.InvalidPasswordException
-import com.amazonaws.services.cognitoidentityprovider.model.NotAuthorizedException
-import com.amazonaws.services.cognitoidentityprovider.model.SignUpResult
-import com.amazonaws.services.cognitoidentityprovider.model.UsernameExistsException
 import com.priyanshparekh.fairshare.model.User
-import com.priyanshparekh.fairshare.model.UserDevice
+import com.priyanshparekh.fairshare.network.KeycloakRetrofitInstance
 import com.priyanshparekh.fairshare.network.RetrofitInstance
+import com.priyanshparekh.fairshare.utils.Constants
 import com.priyanshparekh.fairshare.utils.Status
 import kotlinx.coroutines.launch
 
 class AuthViewModel : ViewModel() {
 
-    private val POOL_ID = "us-east-2_SC50DiBgh"
-    private val CLIENT_ID = "7205d2ge6b6q8gchq8ucb3um33"
+    private val tag = this.javaClass.simpleName
 
     private val _signUpStatus = MutableLiveData<Status<String>>()
     val signUpStatus: LiveData<Status<String>> = _signUpStatus
 
-    fun signUp(context: Context, name: String, phone: String, email: String, password: String, profilePic: String) {
-        _signUpStatus.value = Status.LOADING()
+    fun signUp(context: Context, name: String, email: String, password: String, profilePic: String, fcmToken: String) {
+        viewModelScope.launch {
+            _signUpStatus.value = Status.LOADING()
 
-        val signUpRequest = CognitoUserAttributes()
-        signUpRequest.addAttribute("name", name)
-        signUpRequest.addAttribute("phone_number", "+$phone")
-        signUpRequest.addAttribute("email", email)
+            // Step 1
+            val response = RetrofitInstance.apiService.signUp(
+                SignUpRequest(
+                    username = email.substringBefore("@"),
+                    email = email,
+                    password = password,
+                    name = name,
+                    profilePic = profilePic,
+                    fcmToken = fcmToken
+                )
+            )
 
-        val clientConfiguration = ClientConfiguration()
-        val cognitoUserPool = CognitoUserPool(context, POOL_ID, CLIENT_ID, "", clientConfiguration, Regions.US_EAST_2)
 
-        cognitoUserPool.signUpInBackground(email, password, signUpRequest, null, object :
-            SignUpHandler {
-            override fun onSuccess(user: CognitoUser?, signUpResult: SignUpResult?) {
+            // Step 5
+            if (response.isSuccessful) {
+                val body = response.body()
 
-                addUser(User(email.substring(0, email.indexOf('@')), email, name, profilePic))
+                if (body != null) {
+                    context.getSharedPreferences(Constants.PREF_LOGIN, MODE_PRIVATE).edit().apply {
+                        putString(Constants.LoginKeys.KEY_USERNAME, email.substringBefore("@"))
+                        putString(Constants.LoginKeys.KEY_ACCESS_TOKEN, body.access_token)
+                        putString(Constants.LoginKeys.KEY_REFRESH_TOKEN, body.refresh_token)
+                        putLong(Constants.LoginKeys.KEY_EXPIRY_TIME, System.currentTimeMillis() + (body.expires_in * 1000L))
+                        apply()
+                    }
 
-                login(context, email, password)
-            }
+                    context.getSharedPreferences(Constants.PREF_USER, MODE_PRIVATE).edit().apply {
+                        putLong(Constants.PrefKeys.KEY_USER_ID, body.id)
+                        putString(Constants.PrefKeys.KEY_NAME, body.name)
+                        putString(Constants.PrefKeys.KEY_USERNAME, body.username)
+                        putString(Constants.PrefKeys.KEY_EMAIL, body.email)
+                        putString(Constants.PrefKeys.KEY_PROFILE_PIC, body.profilePic)
+                        apply()
+                    }
+                    _signUpStatus.value = Status.SUCCESS("Sign Up Success")
+                } else {
+                    Log.d(tag, "signUp: inner if: error: body null")
+                    _signUpStatus.value = Status.ERROR("Error signing up")
+                }
+            } else {
+                val errorString = response.errorBody()?.string()
+                val plainMessage = try {
+                    org.json.JSONObject(errorString).getString("message")
+                } catch (e: Exception) {
+                    errorString
+                }
+                val code = response.code()
+                Log.d(tag, "signUp: response code: $code")
+                when(code) {
+                    409 -> {
+                        // Conflict
+                        val message = "UserAlreadyExistsException:$plainMessage"
+                        _signUpStatus.value = Status.ERROR(message)
+                    }
 
-            override fun onFailure(exception: Exception?) {
+                    424 -> {
+                        // Failed Dependency
+                        val message = "AccountCreatedButLoginFailedException:$plainMessage"
+                        _signUpStatus.value = Status.ERROR(message)
+                    }
 
-                when (exception) {
-                    is InvalidPasswordException -> _signUpStatus.value = Status.ERROR("Password must have numeric characters")
-
-                    is UsernameExistsException -> _signUpStatus.value = Status.ERROR("Email already exists")
-
-                    is InvalidParameterException -> _signUpStatus.value = Status.ERROR("Invalid phone number format")
-
-                    else -> {
-                        _signUpStatus.value = Status.ERROR(exception?.message ?: "")
-
-                        exception?.let { e ->
-                            throw e
-                        }
+                    502 -> {
+                        // Bad Gateway
+                        val message = "AuthServiceException:$plainMessage"
+                        _signUpStatus.value = Status.ERROR(message)
+                    }
+                    else ->  {
+                        val message = "Exception:$plainMessage"
+                        _signUpStatus.value = Status.ERROR(message)
                     }
                 }
+                Log.d(tag, "signUp: outer if: error: $errorString")
             }
-        })
+        }
     }
 
     private val _loginStatus = MutableLiveData<Status<String>>()
     val loginStatus: LiveData<Status<String>> = _loginStatus
 
     fun login(context: Context, email: String, password: String) {
-        _loginStatus.value = Status.LOADING()
-
-        val clientConfiguration = ClientConfiguration()
-        val cognitoUserPool = CognitoUserPool(context, POOL_ID, CLIENT_ID, "", clientConfiguration, Regions.US_EAST_2)
-
-        val user = cognitoUserPool.getUser(email)
-
-        val authDetails = AuthenticationDetails(email, password, null)
-
-        user.getSessionInBackground(object : AuthenticationHandler {
-            override fun onSuccess(userSession: CognitoUserSession?, newDevice: CognitoDevice?) {
-
-                context.getSharedPreferences("loginPref", Context.MODE_PRIVATE).apply {
-                    edit().apply {
-                        putString("username", userSession?.username)
-                        putString("accessToken", userSession?.accessToken?.jwtToken)
-                        putString("idToken", userSession?.idToken?.jwtToken)
-                        putString("refreshToken", userSession?.refreshToken?.token)
-                        putLong("expiryTime", userSession?.accessToken?.expiration?.time!!)
-                        apply()
-                    }
-                }
-                _loginStatus.value = Status.SUCCESS(email)
-            }
-
-            override fun getAuthenticationDetails(
-                authenticationContinuation: AuthenticationContinuation?,
-                userId: String?
-            ) {
-                authenticationContinuation?.setAuthenticationDetails(authDetails)
-                authenticationContinuation?.continueTask()
-            }
-
-            override fun getMFACode(continuation: MultiFactorAuthenticationContinuation?) { }
-
-            override fun authenticationChallenge(continuation: ChallengeContinuation?) { }
-
-            override fun onFailure(exception: java.lang.Exception?) {
-
-                when (exception) {
-                    is NotAuthorizedException -> _loginStatus.value = Status.ERROR("Incorrect Username or Password")
-
-                    is InvalidPasswordException -> _loginStatus.value = Status.ERROR("Password must have numeric characters")
-
-                    else -> {
-                        _loginStatus.value = Status.ERROR(exception?.message ?: "")
-                        exception?.let {
-                            throw it
-                        }
-                    }
-                }
-            }
-        })
-    }
-
-    fun addUser(user: User) {
         viewModelScope.launch {
-            val response = RetrofitInstance.apiService.addUser(user)
+            _loginStatus.value = Status.LOADING()
+
+            val response = KeycloakRetrofitInstance.keycloakApiService.login(
+                clientId = "fairshare-public",
+                username = email,
+                password = password
+            )
 
             if (response.isSuccessful) {
                 val body = response.body()
 
                 if (body != null) {
-                    _signUpStatus.value = Status.SUCCESS(body.email)
+                    context.getSharedPreferences(Constants.PREF_LOGIN, MODE_PRIVATE).apply {
+                        edit().apply {
+                            putString(Constants.LoginKeys.KEY_USERNAME, email.substringBefore("@"))
+                            putString(Constants.LoginKeys.KEY_ACCESS_TOKEN, body.access_token)
+                            putString(Constants.LoginKeys.KEY_REFRESH_TOKEN, body.refresh_token)
+                            putLong(Constants.LoginKeys.KEY_EXPIRY_TIME, System.currentTimeMillis() + (body.expires_in * 1000L))
+                            apply()
+                        }
+                    }
+                    _loginStatus.value = Status.SUCCESS(email)
                 } else {
-                    _signUpStatus.value = Status.ERROR("Error adding user to db")
+                    _loginStatus.value = Status.ERROR("Error logging in")
                 }
             } else {
-                _signUpStatus.value = Status.ERROR("Error adding user to db")
+                _loginStatus.value = Status.ERROR("Error logging in")
             }
         }
     }
 
-    private val _userStatus = MutableLiveData<Status<User>>()
-    val userStatus: LiveData<Status<User>> = _userStatus
 
-    fun getUser(username: String) {
+    private val _completeLoginStatus = MutableLiveData<Status<String>>()
+    val completeLoginStatus: LiveData<Status<String>> = _completeLoginStatus
+
+    fun completeLogin(context: Context, username: String, fcmToken: String?) {
         viewModelScope.launch {
-            val response = RetrofitInstance.apiService.getUserByUsername(username)
+            val response = RetrofitInstance.apiService.completeLogin(
+                username = username,
+                token = FcmToken(fcmToken!!)
+            )
 
             if (response.isSuccessful) {
-                val body =  response.body()
+                val body = response.body()
 
                 if (body != null) {
-                    _userStatus.value = Status.SUCCESS(body)
+                    context.getSharedPreferences(Constants.PREF_USER, MODE_PRIVATE).edit().apply {
+                        putLong(Constants.PrefKeys.KEY_USER_ID, body.id)
+                        putString(Constants.PrefKeys.KEY_NAME, body.name)
+                        putString(Constants.PrefKeys.KEY_USERNAME, body.username)
+                        putString(Constants.PrefKeys.KEY_EMAIL, body.email)
+                        putString(Constants.PrefKeys.KEY_PROFILE_PIC, body.profilePic)
+                        apply()
+                    }
+
+                    _completeLoginStatus.value = Status.SUCCESS("Login Successful")
                 } else {
-                    _userStatus.value = Status.ERROR("Error getting user")
+                    _completeLoginStatus.value = Status.ERROR("Error Registering Device")
                 }
             } else {
-                _userStatus.value = Status.ERROR("Error getting user")
+                    _completeLoginStatus.value = Status.ERROR("Error Registering Device")
             }
         }
     }
@@ -180,38 +175,14 @@ class AuthViewModel : ViewModel() {
     val isLoggedIn: LiveData<Boolean> = _isLoggedIn
 
     fun checkLoginStatus(context: Context) {
-        val clientConfiguration = ClientConfiguration()
-        val cognitoUserPool = CognitoUserPool(context, POOL_ID, CLIENT_ID, "", clientConfiguration, Regions.US_EAST_2)
+        val loginPrefs = context.getSharedPreferences(Constants.PREF_LOGIN, MODE_PRIVATE)
+        val accessToken = loginPrefs.getString(Constants.LoginKeys.KEY_ACCESS_TOKEN, "")
+        val expiresIn = loginPrefs.getLong(Constants.LoginKeys.KEY_EXPIRY_TIME, -1L)
 
-        val user = cognitoUserPool.currentUser
-
-        user.getSessionInBackground(object : AuthenticationHandler {
-            override fun onSuccess(userSession: CognitoUserSession?, newDevice: CognitoDevice?) {
-                _isLoggedIn.value = userSession?.isValid == true
-            }
-
-            override fun getAuthenticationDetails(
-                authenticationContinuation: AuthenticationContinuation?,
-                userId: String?
-            ) {
-                authenticationContinuation?.continueTask()
-            }
-
-            override fun getMFACode(continuation: MultiFactorAuthenticationContinuation?) {
-            }
-
-            override fun authenticationChallenge(continuation: ChallengeContinuation?) {
-            }
-
-            override fun onFailure(exception: java.lang.Exception?) {
-                _isLoggedIn.value = false
-            }
-        })
-    }
-
-    fun registerDevice(userDevice: UserDevice) {
-        viewModelScope.launch {
-            RetrofitInstance.apiService.registerDevice(userDevice)
+        if ((accessToken ?: "").isEmpty() or (expiresIn < System.currentTimeMillis())) {
+            _isLoggedIn.value = false
+        } else {
+            _isLoggedIn.value = true
         }
     }
 

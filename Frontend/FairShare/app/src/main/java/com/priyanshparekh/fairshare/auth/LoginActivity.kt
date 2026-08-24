@@ -1,6 +1,5 @@
 package com.priyanshparekh.fairshare.auth
 
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -14,7 +13,6 @@ import com.google.android.material.snackbar.Snackbar
 import com.priyanshparekh.fairshare.home.HomeActivity
 import com.priyanshparekh.fairshare.R
 import com.priyanshparekh.fairshare.databinding.ActivityLoginBinding
-import com.priyanshparekh.fairshare.model.UserDevice
 import com.priyanshparekh.fairshare.utils.Constants
 import com.priyanshparekh.fairshare.utils.Status
 
@@ -35,8 +33,6 @@ class LoginActivity : AppCompatActivity() {
             insets
         }
 
-        var fcmToken = getSharedPreferences(Constants.PREF_TOKEN, Context.MODE_PRIVATE).getString(Constants.PrefKeys.KEY_TOKEN, "")!!
-
         authViewModel = ViewModelProvider(this)[AuthViewModel::class.java]
 
         binding.linkToSignup.setOnClickListener {
@@ -49,11 +45,14 @@ class LoginActivity : AppCompatActivity() {
         authViewModel.loginStatus.observe(this) { status ->
             when (status) {
                 is Status.SUCCESS -> {
-                    Toast.makeText(this, status.data, Toast.LENGTH_SHORT).show()
 
                     val email = status.data
                     val username = email.substring(0, email.indexOf('@'))
-                    authViewModel.getUser(username)
+
+                    val fcmToken = getSharedPreferences(Constants.PREF_TOKEN, MODE_PRIVATE).getString(Constants.PrefKeys.KEY_TOKEN, "")
+                    authViewModel.completeLogin(this, username, fcmToken)
+
+
                 }
                 is Status.ERROR -> {
                     Snackbar.make(binding.root, status.message, Snackbar.LENGTH_LONG).apply {
@@ -69,33 +68,23 @@ class LoginActivity : AppCompatActivity() {
             }
         }
 
-        authViewModel.userStatus.observe(this) { status ->
+        authViewModel.completeLoginStatus.observe(this) { status ->
             when (status) {
+                is Status.LOADING -> binding.loading.visibility = View.VISIBLE
                 is Status.ERROR -> {
                     binding.loading.visibility = View.GONE
 
-                    Toast.makeText(this, status.message, Toast.LENGTH_SHORT).show()
+                    Snackbar.make(binding.root, status.message, Snackbar.LENGTH_LONG).apply {
+                        setAction("OK") {
+                            this.dismiss()
+                        }
+                        setBackgroundTint(resources.getColor(R.color.md_theme_error, theme))
+                        setTextColor(resources.getColor(R.color.md_theme_onError, theme))
+                        show()
+                    }
                 }
-                is Status.LOADING -> binding.loading.visibility = View.VISIBLE
                 is Status.SUCCESS -> {
-                    val user = status.data
-
-                    getSharedPreferences(Constants.PREF_USER, MODE_PRIVATE).edit().apply {
-                        putLong(Constants.PrefKeys.KEY_USER_ID, user.id ?: -1L)
-                        putString(Constants.PrefKeys.KEY_NAME, user.name)
-                        putString(Constants.PrefKeys.KEY_USERNAME, user.username)
-                        putString(Constants.PrefKeys.KEY_EMAIL, user.email)
-                        putString(Constants.PrefKeys.KEY_PROFILE_PIC, user.profilePic)
-                        apply()
-                    }
-
-                    if (fcmToken.isEmpty()) {
-                        fcmToken = getSharedPreferences(Constants.PREF_TOKEN, Context.MODE_PRIVATE).getString(Constants.PrefKeys.KEY_TOKEN, "")!!
-                    }
-                    val userDevice = UserDevice(null, user.id!!, fcmToken, null)
-                    authViewModel.registerDevice(userDevice)
-
-                    binding.loading.visibility = View.GONE
+                    Toast.makeText(this, "Login Successful", Toast.LENGTH_SHORT).show()
 
                     val intent = Intent(this@LoginActivity, HomeActivity::class.java)
                     startActivity(intent)

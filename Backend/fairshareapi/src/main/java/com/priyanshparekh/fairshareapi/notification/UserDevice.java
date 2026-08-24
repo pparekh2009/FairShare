@@ -15,6 +15,5 @@ public class UserDevice {
     private Long id;
     private Long userId;
     private String fcmToken;
-    private String endpointArn;
 
 }

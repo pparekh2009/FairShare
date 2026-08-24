@@ -15,11 +15,6 @@ public class NotificationController {
         this.notificationService = notificationService;
     }
 
-    @PostMapping("/register")
-    public ResponseEntity<UserDevice> registerDevice(@RequestBody UserDevice userDevice) {
-        return ResponseEntity.ok(notificationService.registerDevice(userDevice));
-    }
-
     @PostMapping("/unregister")
     public ResponseEntity<String> unregisterDevice(@RequestParam(value = "id") String userId, @RequestParam(value = "token") String fcmToken) {
         notificationService.unregisterDevice(userId, fcmToken);

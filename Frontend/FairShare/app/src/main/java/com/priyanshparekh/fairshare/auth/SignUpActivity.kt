@@ -1,6 +1,5 @@
 package com.priyanshparekh.fairshare.auth
 
-import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -20,7 +19,6 @@ import com.google.android.material.snackbar.Snackbar
 import com.priyanshparekh.fairshare.R
 import com.priyanshparekh.fairshare.databinding.ActivitySignUpBinding
 import com.priyanshparekh.fairshare.home.HomeActivity
-import com.priyanshparekh.fairshare.model.UserDevice
 import com.priyanshparekh.fairshare.utils.Constants
 import com.priyanshparekh.fairshare.utils.LetterAvatar
 import com.priyanshparekh.fairshare.utils.Status
@@ -95,19 +93,6 @@ class SignUpActivity : AppCompatActivity() {
 
         })
 
-        binding.phoneInput.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) { }
-
-            override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
-                if (binding.phoneInputLayout.error != "") {
-                    binding.phoneInputLayout.error = ""
-                }
-            }
-
-            override fun afterTextChanged(p0: Editable?) { }
-
-        })
-
         binding.emailInput.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) { }
 
@@ -139,65 +124,66 @@ class SignUpActivity : AppCompatActivity() {
                 is Status.SUCCESS -> {
                     binding.loading.visibility = View.GONE
 
-                    val email = status.data
-                    val username = email.substring(0, email.indexOf('@'))
-                    authViewModel.getUser(username)
-
                     Toast.makeText(this, status.data, Toast.LENGTH_SHORT).show()
-                }
-
-                is Status.ERROR -> {
-                    binding.loading.visibility = View.GONE
-
-                    Snackbar.make(binding.root, status.message, Snackbar.LENGTH_LONG).apply {
-                        setAction("OK") {
-                            this.dismiss()
-                        }
-                        setBackgroundTint(resources.getColor(R.color.md_theme_error, theme))
-                        setTextColor(resources.getColor(R.color.md_theme_onError, theme))
-                        show()
-                    }
-                }
-                is Status.LOADING -> binding.loading.visibility = View.VISIBLE
-            }
-        }
-
-        authViewModel.userStatus.observe(this) { status ->
-            when (status) {
-                is Status.ERROR -> {
-                    binding.loading.visibility = View.GONE
-
-                    Toast.makeText(this, status.message, Toast.LENGTH_SHORT).show()
-                }
-                is Status.LOADING -> binding.loading.visibility = View.VISIBLE
-                is Status.SUCCESS -> {
-                    val user = status.data
-
-                    getSharedPreferences(Constants.PREF_USER, MODE_PRIVATE).edit().apply {
-                        putLong(Constants.PrefKeys.KEY_USER_ID, user.id ?: -1L)
-                        putString(Constants.PrefKeys.KEY_NAME, user.name)
-                        putString(Constants.PrefKeys.KEY_USERNAME, user.username)
-                        putString(Constants.PrefKeys.KEY_EMAIL, user.email)
-                        putString(Constants.PrefKeys.KEY_PROFILE_PIC, user.profilePic)
-                        apply()
-                    }
-
-                    val fcmToken = getSharedPreferences(Constants.PREF_TOKEN, Context.MODE_PRIVATE).getString(Constants.PrefKeys.KEY_TOKEN, "")
-
-                    val userDevice = UserDevice(null, user.id!!, fcmToken!!, null)
-                    authViewModel.registerDevice(userDevice)
-
-                    binding.loading.visibility = View.GONE
 
                     val intent = Intent(this@SignUpActivity, HomeActivity::class.java)
                     startActivity(intent)
+
                 }
+
+                is Status.ERROR -> {
+                    binding.loading.visibility = View.GONE
+
+                    val code = status.message.split(":")[0]
+                    val message = status.message.split(":")[1]
+
+                    when (code) {
+                        "UserAlreadyExistsException" -> {
+                            Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG).apply {
+                                setAction("OK") {
+                                    this.dismiss()
+                                }
+                                setBackgroundTint(resources.getColor(R.color.md_theme_error, theme))
+                                setTextColor(resources.getColor(R.color.md_theme_onError, theme))
+                                show()
+                            }
+                        }
+
+                        "AccountCreatedButLoginFailedException" -> {
+                            Toast.makeText(this, "Sign Up Successful", Toast.LENGTH_SHORT).show()
+
+                            val intent = Intent(this@SignUpActivity, LoginActivity::class.java)
+                            startActivity(intent)
+                        }
+
+                        "AuthServiceException" -> {
+                            Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG).apply {
+                                setAction("OK") {
+                                    this.dismiss()
+                                }
+                                setBackgroundTint(resources.getColor(R.color.md_theme_error, theme))
+                                setTextColor(resources.getColor(R.color.md_theme_onError, theme))
+                                show()
+                            }
+                        }
+                        else -> {
+                            Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG).apply {
+                                setAction("OK") {
+                                    this.dismiss()
+                                }
+                                setBackgroundTint(resources.getColor(R.color.md_theme_error, theme))
+                                setTextColor(resources.getColor(R.color.md_theme_onError, theme))
+                                show()
+                            }
+                        }
+                    }
+                }
+                is Status.LOADING -> binding.loading.visibility = View.VISIBLE
             }
         }
 
         binding.btnSignup.setOnClickListener {
             val name = binding.nameInput.text?.toString() ?: ""
-            val phone = binding.phoneInput.text?.toString() ?: ""
             val email = binding.emailInput.text?.toString() ?: ""
             val password = binding.passwordInput.text?.toString() ?: ""
 
@@ -211,16 +197,10 @@ class SignUpActivity : AppCompatActivity() {
             bitmap.compress(Bitmap.CompressFormat.JPEG, 80, baos)
             val imageInByte = baos.toByteArray()
 
-            val base64NoWrap = Base64.encodeToString(imageInByte, Base64.NO_WRAP)
-
+            val profilePicBase64String = Base64.encodeToString(imageInByte, Base64.NO_WRAP)
 
             if (name.isEmpty()) {
                 binding.nameInputLayout.error = "Name cannot be empty"
-                return@setOnClickListener
-            }
-
-            if (phone.isEmpty()) {
-                binding.phoneInputLayout.error = "Phone Number cannot be empty"
                 return@setOnClickListener
             }
 
@@ -234,7 +214,8 @@ class SignUpActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            authViewModel.signUp(this, name, phone, email, password, base64NoWrap)
+            val fcmToken = getSharedPreferences(Constants.PREF_TOKEN, MODE_PRIVATE).getString(Constants.PrefKeys.KEY_TOKEN, "")!!
+            authViewModel.signUp(this, name, email, password, profilePicBase64String, fcmToken)
         }
     }
 }

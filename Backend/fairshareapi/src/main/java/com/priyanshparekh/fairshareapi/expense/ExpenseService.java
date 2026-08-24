@@ -8,6 +8,7 @@ import com.priyanshparekh.fairshareapi.balanceinfo.BalanceInfoService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,6 +24,9 @@ public class ExpenseService {
     private final UserAmountRepository userAmountRepository;
 
     private final BalanceInfoService balanceInfoService;
+
+    @Value("${cloud.aws.s3.bucket}")
+    private String bucketName;
 
     @Autowired
     private AmazonS3 amazonS3;
@@ -116,7 +120,7 @@ public class ExpenseService {
             String fileName = getFileName(file.getOriginalFilename());
 
             PutObjectResult result = amazonS3.putObject(new PutObjectRequest(
-                    "fairshare-bucket",
+                    bucketName,
                     fileName,
                     file.getInputStream(),
                     metadata

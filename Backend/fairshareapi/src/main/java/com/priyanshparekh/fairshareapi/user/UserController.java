@@ -33,4 +33,9 @@ public class UserController {
     public ResponseEntity<List<User>> searchUsers(@RequestParam String query) {
         return ResponseEntity.ok(userService.searchUsers(query));
     }
+
+    @PostMapping("/users/{username}/login-complete")
+    public ResponseEntity<LoginCompleteDto> completeLogin(@PathVariable String username, @RequestBody FcmToken token) {
+        return ResponseEntity.ok(userService.completeLogin(username, token));
+    }
 }

@@ -10,6 +10,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.priyanshparekh.fairshare.auth.AuthViewModel
 import com.priyanshparekh.fairshare.auth.LoginActivity
 import com.priyanshparekh.fairshare.databinding.ActivitySplashBinding
+import com.priyanshparekh.fairshare.network.RetrofitInstance
 
 class SplashActivity : AppCompatActivity() {
 
@@ -27,6 +28,8 @@ class SplashActivity : AppCompatActivity() {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
+
+        RetrofitInstance.init(this.applicationContext)
 
         authViewModel = ViewModelProvider(this)[AuthViewModel::class.java]
 

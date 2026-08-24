@@ -370,7 +370,91 @@ class BalancesFragment : Fragment() {
         return newBalanceList
 
 //        val balanceGraph = Graph()
-//        Log.d("TAG", "simplifyBalances: balanceGraph: $balanceGraph")
+//        Log.d("TAG", "simplifyBalances: balanceGraph: $balanceGraph")private fun simplifyBalances(balanceList: List<BalanceInfo>, groupId: Long): List<BalanceInfo> {
+//        val balancesMap = HashMap<Pair<Long, Long>, Double>()
+//
+//        for (balance in balanceList) {
+//            balancesMap[Pair(balance.userId, balance.otherUserId)] = balance.amount
+//        }
+//
+//        Log.d("TAG", "simplifyBalances: old balance map: ")
+//        for (key in balancesMap.keys) {
+//            Log.d("TAG", "simplifyBalances: $key: ${balancesMap[key]}")
+//        }
+//
+//        val newBalanceMap1 = HashMap<Pair<Long, Long>, Double>()
+//        for (key in balancesMap.keys) {
+//            val inverseKey = Pair(key.second, key.first)
+//            if (balancesMap.containsKey(inverseKey)) {
+//                if (balancesMap[key]!! > balancesMap[inverseKey]!!) {
+//                    newBalanceMap1[key] = balancesMap[key]!! - balancesMap[inverseKey]!!
+////                    balancesMap.remove(inverseKey)
+//                } else {
+//                    newBalanceMap1[inverseKey] = balancesMap[inverseKey]!! - balancesMap[key]!!
+////                    balancesMap.remove(key)
+//                }
+//            } else {
+//                newBalanceMap1[key] = balancesMap[key]!!
+//            }
+//        }
+//
+//        Log.d("TAG", "simplifyBalances: new balance map 1: ")
+//        for (key in newBalanceMap1.keys) {
+//            Log.d("TAG", "simplifyBalances: $key: ${newBalanceMap1[key]}")
+//        }
+//
+//        val newBalanceMap2 = HashMap<Pair<Long, Long>, Double>(newBalanceMap1)
+//        outerloop@ for (key1 in newBalanceMap1.keys) {
+//            innerloop@ for (key2 in newBalanceMap1.keys) {
+//                if (key1 != key2) {
+//                    if (key1.second == key2.first) {
+////                        Log.d("TAG", "simplifyBalances: key 1: $key1")
+////                        Log.d("TAG", "simplifyBalances: key 2: $key2")
+//                        val key = Pair(key1.first, key2.second)
+////                        Log.d("TAG", "simplifyBalances: key: $key")
+////                        if (key != key1 && key != key2) {
+//                        if (!newBalanceMap2.containsKey(key)) {
+////                            if (newBalanceMap1.containsKey(key)) {
+//                                if (newBalanceMap1[key1] == newBalanceMap1[key2]) {
+//                                    if (newBalanceMap1[key1] != 0.0) {
+//                                        newBalanceMap2[key] = newBalanceMap1[key1]!!
+//                                    }
+//                                    newBalanceMap2.remove(key1)
+//                                    newBalanceMap2.remove(key2)
+//                                    break@outerloop
+//                                }
+////                            }
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//
+//        Log.d("TAG", "simplifyBalances: new balance map 2: ")
+//        for (key in newBalanceMap2.keys) {
+//            Log.d("TAG", "simplifyBalances: $key: ${newBalanceMap2[key]}")
+//        }
+//
+//        val newBalanceList = ArrayList<BalanceInfo>()
+//        for (newBalance in newBalanceMap2) {
+//            newBalanceList.add(BalanceInfo(null, groupId, newBalance.key.first, Direction.OWES_TO, newBalance.key.second, newBalance.value))
+//        }
+//
+//        Log.d("TAG", "simplifyBalances: ========================================")
+//
+//        return newBalanceList
+//
+////        val balanceGraph = Graph()
+////        Log.d("TAG", "simplifyBalances: balanceGraph: $balanceGraph")
+////
+////        for (entry in balanceList) {
+////            val triple = Triple(entry.userId, entry.otherUserId, entry.amount)
+////            Log.d("TAG", "simplifyBalances: triple: $triple")
+////            balanceGraph.addEdge(entry.userId, entry.otherUserId, entry.amount)
+////        }
+////
+////        balanceGraph.show()
+//    }
 //
 //        for (entry in balanceList) {
 //            val triple = Triple(entry.userId, entry.otherUserId, entry.amount)

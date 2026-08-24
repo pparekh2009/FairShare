@@ -48,10 +48,6 @@
             android:name=".auth.LoginActivity"
             android:exported="false"
             android:theme="@style/Theme.FairShare" />
-        <activity
-            android:name=".MainActivity"
-            android:exported="false"
-            android:theme="@style/Theme.FairShare" />
 
         <service
             android:name=".group.balances.notification.MessageService"

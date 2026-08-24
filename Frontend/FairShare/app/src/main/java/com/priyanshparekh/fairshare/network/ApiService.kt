@@ -1,5 +1,10 @@
 package com.priyanshparekh.fairshare.network
 
+import com.priyanshparekh.fairshare.auth.AuthResponseDto
+import com.priyanshparekh.fairshare.auth.FcmToken
+import com.priyanshparekh.fairshare.auth.KeycloakTokenResponse
+import com.priyanshparekh.fairshare.auth.LoginCompleteDto
+import com.priyanshparekh.fairshare.auth.SignUpRequest
 import com.priyanshparekh.fairshare.group.balances.notification.NotificationRequest
 import com.priyanshparekh.fairshare.group.dashboard.DashboardDTO
 import com.priyanshparekh.fairshare.model.ActivityLog
@@ -10,7 +15,6 @@ import com.priyanshparekh.fairshare.model.GroupMember
 import com.priyanshparekh.fairshare.model.PayData
 import com.priyanshparekh.fairshare.model.UploadResponse
 import com.priyanshparekh.fairshare.model.User
-import com.priyanshparekh.fairshare.model.UserDevice
 import okhttp3.MultipartBody
 import okhttp3.ResponseBody
 import retrofit2.Response
@@ -25,16 +29,15 @@ import retrofit2.http.Streaming
 
 interface ApiService {
 
-    // Users
-    @POST("/users")
-    suspend fun addUser(@Body user: User): Response<User>
-
-    @GET("/users/{username}")
-    suspend fun getUserByUsername(@Path(value = "username") username: String): Response<User>
+    // Auth
+    @POST("/auth/signup")
+    suspend fun signUp(@Body signUpRequest: SignUpRequest): Response<AuthResponseDto>
 
     @GET("/users")
     suspend fun searchUser(@Query(value = "query") query: CharSequence): Response<List<User>>
 
+    @POST("/users/{username}/login-complete")
+    suspend fun completeLogin(@Path(value = "username") username: String, @Body token: FcmToken): Response<LoginCompleteDto>
 
 
     //Groups
@@ -90,9 +93,6 @@ interface ApiService {
     suspend fun getDashboardStats(@Path(value = "group-id") groupId: Long): Response<DashboardDTO>
 
     // Notifications
-
-    @POST("/register")
-    suspend fun registerDevice(@Body userDevice: UserDevice): Response<UserDevice>
 
     @POST("/unregister")
     suspend fun unregisterDevice(@Query(value = "id") userId: String, @Query(value = "token") fcmToken: String): Response<String>
