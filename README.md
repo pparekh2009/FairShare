@@ -39,7 +39,7 @@ This project started as a Cloud Computing class assignment built entirely on AWS
 
 ## Architecture (Current)
 
-![Fairshare New Architecture](./Fairshare New Architecture.png)
+![Fairshare New Architecture](./Fairshare%20New%20Architecture.png)
 
 The app talks to Keycloak directly for login and to the Spring Boot backend for everything else (signup, groups, expenses, receipts), with the backend backed by MySQL, SeaweedFS, and Firebase — all running locally via Docker Compose.
 
